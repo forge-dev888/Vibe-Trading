@@ -45,6 +45,7 @@ from backtest.engines._market_hooks import (  # noqa: F401  (re-exported)
     _detect_submarket,
     _is_china_futures,
 )
+from backtest.markets import MARKET_REGISTRY, classify_strict
 
 logger = logging.getLogger(__name__)
 
@@ -526,17 +527,14 @@ def _validate_signal_engine_class(engine_cls) -> None:
 # ``_detect_submarket`` are imported from ``_market_hooks`` above and
 # re-exported here for back-compat (swarm/grounding.py, tests).
 
-# Back-compat: market type -> legacy source name (for engine selection & metrics)
+# Back-compat: market type -> legacy source name (for engine selection & metrics).
+# Derived from backtest.markets.MARKET_REGISTRY; ``fund``/``macro`` have no
+# MarketSpec (see FALLBACK_CHAINS comment in loaders/registry.py) so they
+# stay listed here directly.
 _MARKET_TO_SOURCE = {
-    "a_share": "tushare",
-    "us_equity": "yfinance",
-    "hk_equity": "yfinance",
-    "india_equity": "yahoo",
-    "crypto": "okx",
-    "futures": "tushare",
+    **{key: spec.default_source for key, spec in MARKET_REGISTRY.items()},
     "fund": "tushare",
     "macro": "akshare",
-    "forex": "akshare",
 }
 
 
@@ -561,10 +559,19 @@ def _group_codes_by_market(codes: List[str]) -> Dict[str, List[str]]:
 
     Returns:
         Mapping market_type -> list of codes.
+
+    Raises:
+        UnsupportedMarketError: ``code`` carries a market-qualifying suffix
+            (e.g. ``FOO.ZZ``) that no registered market recognizes. This is
+            the auto-routing entry point (``_fetch_auto``), so a typo or an
+            unonboarded market must fail loud here rather than silently
+            routing to ``a_share``/Chinese data sources (design doc section
+            4.2) — the exact failure mode that made ``BHP.AX`` look like a
+            data outage before ``au_equity`` existed.
     """
     groups: Dict[str, List[str]] = {}
     for code in codes:
-        market = _detect_market(code)
+        market = classify_strict(code)
         groups.setdefault(market, []).append(code)
     return groups
 
@@ -1019,6 +1026,12 @@ def _create_market_engine(source: str, config: dict, codes: List[str]):
     if "india_equity" in markets:
         from backtest.engines.india_equity import IndiaEquityEngine
         return IndiaEquityEngine(config)
+
+    # ASX equity routing — same rationale as India above: au_equity's
+    # effective source is ``yahoo``/``yfinance``, which has no Wave-1 branch.
+    if "au_equity" in markets:
+        from backtest.engines.global_equity import GlobalEquityEngine
+        return GlobalEquityEngine(config, market="au")
 
     # Original routing (Wave 1)
     if source in ("okx", "ccxt"):

@@ -39,8 +39,8 @@ _INTERVAL_MAP = {
 
 
 def _is_supported(code: str) -> bool:
-    """Return whether *code* is a symbol this loader handles (US/HK/India)."""
-    return code.strip().upper().endswith((".US", ".HK", ".NS", ".BO"))
+    """Return whether *code* is a symbol this loader handles (US/HK/India/ASX)."""
+    return code.strip().upper().endswith((".US", ".HK", ".NS", ".BO", ".AX"))
 
 
 def _to_yahoo_interval(interval: str) -> str:
@@ -158,7 +158,7 @@ class DataLoader:
     """Yahoo Finance US/HK equity OHLCV loader (free, direct HTTP, no auth)."""
 
     name = "yahoo"
-    markets = {"us_equity", "hk_equity", "india_equity"}
+    markets = {"us_equity", "hk_equity", "india_equity", "au_equity"}
     requires_auth = False
 
     def is_available(self) -> bool:

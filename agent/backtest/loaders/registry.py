@@ -13,6 +13,7 @@ import logging
 from typing import Any, Type
 
 from backtest.loaders.base import NoAvailableSourceError
+from backtest.markets import MARKET_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -129,17 +130,15 @@ _NO_NETWORK_FALLBACK_SOURCES: frozenset[str] = frozenset({"local", "qveris"})  #
 # data quality. Eastmoney/Sina/Stooq/Yahoo are unauthenticated public sources
 # that must be politely throttled; Finnhub/AlphaVantage/Tiingo/FMP are key-gated
 # REST fallbacks placed deeper in the chain.
+#
+# Derived from backtest.markets.MARKET_REGISTRY (single source of truth) for
+# every symbol-classified market; ``fund``/``macro`` have no MarketSpec
+# (they are never inferred from a symbol pattern, only from an explicit
+# ``source``/config value) so their chains stay listed here directly.
 FALLBACK_CHAINS: dict[str, list[str]] = {
-    "a_share":   ["tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
-    "us_equity": ["yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "longbridge", "akshare", "local"],
-    "hk_equity": ["eastmoney", "yahoo", "futu", "yfinance", "akshare", "longbridge", "local"],
-    "india_equity": ["yahoo", "yfinance", "india_broker", "local"],
-    # OKX first (native), then dedicated Binance, then generic CCXT / Yahoo.
-    "crypto":    ["okx", "binance", "ccxt", "yfinance", "local"],
-    "futures":   ["tushare", "akshare", "local"],
-    "fund":      ["tushare", "akshare", "local"],
-    "macro":     ["akshare", "tushare", "local"],
-    "forex":     ["akshare", "yfinance", "local"],
+    **{key: list(spec.source_chain) for key, spec in MARKET_REGISTRY.items()},
+    "fund":  ["tushare", "akshare", "local"],
+    "macro": ["akshare", "tushare", "local"],
 }
 
 

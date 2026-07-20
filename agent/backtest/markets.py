@@ -1,22 +1,33 @@
-"""Single source of truth for symbol -> market classification.
+"""Single source of truth for symbol -> market classification and routing.
 
 Stage 1 of the first-class-markets registry described in
-``docs/design/first-class-markets-and-asx.md``. Consolidates the symbol
+``docs/design/first-class-markets-and-asx.md`` consolidated the symbol
 pattern table that was previously duplicated (and had drifted out of
 sync) across ``_market_hooks.py``, ``benchmark.py``, and
 ``correlation.py``.
 
-Routing (fallback chains, engine factories, loader gates) still lives in
-``runner.py`` / ``registry.py`` / the loader modules; migrating those onto
-this registry is a later stage. This module owns classification and the
-market -> benchmark ticker mapping only.
+Stage 2 extends ``MarketSpec`` with ``source_chain``/``default_source`` so
+``registry.FALLBACK_CHAINS`` and ``runner._MARKET_TO_SOURCE`` derive from
+this module instead of holding their own copies. Engine selection and
+loader-gate allowlists still live in their own modules (``runner.py``,
+``composite.py``, the loader modules) — the branching logic there is
+market-specific enough that folding it into a generic callable would trade
+a handful of explicit ``if`` branches for an equally-sized layer of
+indirection, so it is left as-is and only extended per market.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Pattern, Tuple
+
+
+class UnsupportedMarketError(ValueError):
+    """Raised when a symbol carries a market-qualifying suffix that no
+    registered ``MarketSpec`` recognizes (e.g. a typo, or a market not yet
+    onboarded). Distinct from a bare/unqualified code, which is genuinely
+    ambiguous and keeps the legacy ``a_share`` default."""
 
 
 @dataclass(frozen=True)
@@ -24,6 +35,8 @@ class MarketSpec:
     key: str
     patterns: Tuple[Pattern[str], ...]
     benchmark: Optional[str]  # None means deliberately no benchmark (e.g. forex)
+    source_chain: Tuple[str, ...] = field(default_factory=tuple)
+    default_source: Optional[str] = None
 
 
 def _p(pattern: str, flags: int = re.I) -> Pattern[str]:
@@ -40,16 +53,22 @@ MARKET_REGISTRY: dict[str, MarketSpec] = {
             _p(r"^(51|15|56)\d{4}\.(SZ|SH)$"),
         ),
         benchmark="000300.SH",  # CSI 300 (China A-share core index)
+        source_chain=("tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"),
+        default_source="tushare",
     ),
     "us_equity": MarketSpec(
         key="us_equity",
         patterns=(_p(r"^[A-Z]+\.US$"),),
         benchmark="SPY",
+        source_chain=("yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "longbridge", "akshare", "local"),
+        default_source="yfinance",
     ),
     "hk_equity": MarketSpec(
         key="hk_equity",
         patterns=(_p(r"^\d{3,5}\.HK$"),),
         benchmark="HK.03100",  # Hang Seng China Enterprises ETF
+        source_chain=("eastmoney", "yahoo", "futu", "yfinance", "akshare", "longbridge", "local"),
+        default_source="yfinance",
     ),
     "india_equity": MarketSpec(
         key="india_equity",
@@ -57,11 +76,23 @@ MARKET_REGISTRY: dict[str, MarketSpec] = {
         # (e.g. M&M.NS, BAJAJ-AUTO.NS).
         patterns=(_p(r"^[A-Z0-9&.\-]+\.(NS|BO)$"),),
         benchmark="^NSEI",  # Nifty 50 — previously missing from MARKET_BENCHMARKS
+        source_chain=("yahoo", "yfinance", "india_broker", "local"),
+        default_source="yahoo",
+    ),
+    "au_equity": MarketSpec(
+        key="au_equity",
+        # ASX (BHP.AX, CBA.AX); Yahoo/yfinance both accept the suffix verbatim.
+        patterns=(_p(r"^[A-Z0-9]+\.AX$"),),
+        benchmark="^AXJO",  # S&P/ASX 200
+        source_chain=("yahoo", "yfinance", "local"),
+        default_source="yahoo",
     ),
     "crypto": MarketSpec(
         key="crypto",
         patterns=(_p(r"^[A-Z]+-USDT$"), _p(r"^[A-Z]+/USDT$")),
         benchmark="BTC-USDT",
+        source_chain=("okx", "binance", "ccxt", "yfinance", "local"),
+        default_source="okx",
     ),
     "futures": MarketSpec(
         key="futures",
@@ -76,13 +107,24 @@ MARKET_REGISTRY: dict[str, MarketSpec] = {
             _p(r"^[A-Z]{2,4}\.(CME|CBOT|NYMEX|COMEX|ICE|EUREX)$"),
         ),
         benchmark="ES.CME",  # E-mini S&P 500 futures
+        source_chain=("tushare", "akshare", "local"),
+        default_source="tushare",
     ),
     "forex": MarketSpec(
         key="forex",
         patterns=(_p(r"^[A-Z]{3}/[A-Z]{3}$", 0), _p(r"^[A-Z]{6}\.FX$", 0)),
         benchmark=None,  # no universal benchmark
+        source_chain=("akshare", "yfinance", "local"),
+        default_source="akshare",
     ),
 }
+
+# Suffix-qualified but unrecognized (e.g. "FOO.L", a typo, or a market not
+# yet onboarded) — used by classify_strict() to fail closed instead of
+# silently defaulting to a_share. Deliberately narrower than "contains a
+# dot": bare numeric/alpha codes with no suffix are genuinely ambiguous and
+# keep the legacy a_share default (test_market_detection.py pins this).
+_QUALIFIED_SUFFIX_RE = re.compile(r"^[A-Z0-9&\-]+\.[A-Z]{1,6}$", re.I)
 
 
 def classify(code: str) -> Optional[str]:
@@ -98,3 +140,26 @@ def classify(code: str) -> Optional[str]:
             if pattern.match(code):
                 return key
     return None
+
+
+def classify_strict(code: str) -> str:
+    """Classify ``code`` for auto-mode routing, failing closed on typos.
+
+    Same as ``classify()`` for anything a registered ``MarketSpec`` matches.
+    For codes that carry a market-qualifying suffix (``FOO.XY``) but match no
+    registered pattern, raises ``UnsupportedMarketError`` instead of silently
+    routing to ``a_share`` — this is what stopped ``BHP.AX`` from failing
+    opaquely against Chinese data sources (see design doc section 1/4.2).
+    Bare/unqualified codes remain ambiguous by design and keep the legacy
+    ``a_share`` default.
+    """
+    market = classify(code)
+    if market is not None:
+        return market
+    if _QUALIFIED_SUFFIX_RE.match(code.strip()):
+        raise UnsupportedMarketError(
+            f"Unsupported market for symbol {code!r}: no registered market "
+            "recognizes this suffix. Check for a typo, or this market needs "
+            "a MarketSpec entry in backtest/markets.py."
+        )
+    return "a_share"
