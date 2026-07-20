@@ -253,6 +253,9 @@ class SwarmConfig(_EnvBase):
     swarm_heartbeat_interval_s: float = Field(alias="SWARM_HEARTBEAT_INTERVAL_S", default=3.0)
     swarm_stream_retry_delay_s: float = Field(alias="SWARM_STREAM_RETRY_DELAY_S", default=1.0)
     swarm_grounding_max_symbols: int = Field(alias="SWARM_GROUNDING_MAX_SYMBOLS", default=8)
+    swarm_single_agent_mode: EnvBool = Field(
+        alias="SWARM_SINGLE_AGENT_MODE", default=False,
+    )
 
 
 # ---------------------------------------------------------------------------

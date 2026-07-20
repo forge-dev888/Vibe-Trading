@@ -15,7 +15,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
-from src.config.accessor import reset_env_config
+from src.config.accessor import _parse_bool, reset_env_config
 
 # Agent root (agent/) — resolved from this file's location (agent/src/api/).
 _AGENT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -55,6 +55,7 @@ class LLMSettingsResponse(BaseModel):
     max_retries: int
     reasoning_effort: str
     sse_timeout_seconds: int
+    swarm_single_agent_mode: bool
     env_path: str
     providers: List[LLMProviderOption]
 
@@ -71,6 +72,7 @@ class UpdateLLMSettingsRequest(BaseModel):
     timeout_seconds: int = Field(120, ge=1, le=3600)
     max_retries: int = Field(2, ge=0, le=20)
     reasoning_effort: Optional[str] = None
+    swarm_single_agent_mode: bool = False
 
 
 class DataSourceSettingsResponse(BaseModel):
@@ -215,6 +217,7 @@ def _build_llm_settings_response(
         max_retries=host._coerce_int(env_values.get("MAX_RETRIES", "2"), 2),
         reasoning_effort=env_values.get("LANGCHAIN_REASONING_EFFORT", "").strip().lower(),
         sse_timeout_seconds=host._coerce_int(env_values.get("VIBE_TRADING_SSE_TIMEOUT", "90"), 90),
+        swarm_single_agent_mode=_parse_bool(env_values.get("SWARM_SINGLE_AGENT_MODE")),
         env_path=host._project_relative_path(host.ENV_PATH),
         providers=LLM_PROVIDERS,
     )
@@ -402,6 +405,7 @@ def register_settings_routes(
             "LANGCHAIN_TEMPERATURE": str(payload.temperature),
             "TIMEOUT_SECONDS": str(payload.timeout_seconds),
             "MAX_RETRIES": str(payload.max_retries),
+            "SWARM_SINGLE_AGENT_MODE": "true" if payload.swarm_single_agent_mode else "false",
         }
         if reasoning_effort or "LANGCHAIN_REASONING_EFFORT" in current_values:
             updates["LANGCHAIN_REASONING_EFFORT"] = reasoning_effort

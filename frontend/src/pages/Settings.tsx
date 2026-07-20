@@ -15,6 +15,7 @@ interface LLMFormState {
   timeout_seconds: number;
   max_retries: number;
   reasoning_effort: string;
+  swarm_single_agent_mode: boolean;
 }
 
 const fieldClass =
@@ -31,6 +32,7 @@ function toForm(settings: LLMSettings): LLMFormState {
     timeout_seconds: settings.timeout_seconds,
     max_retries: settings.max_retries,
     reasoning_effort: settings.reasoning_effort || "",
+    swarm_single_agent_mode: settings.swarm_single_agent_mode,
   };
 }
 
@@ -563,6 +565,19 @@ export function Settings() {
                 <option value="max">max</option>
               </select>
               <span className={hintClass}>{"How hard the model thinks before answering. Higher is more thorough but slower; leave Off for fastest replies."}</span>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.swarm_single_agent_mode}
+                  onChange={(event) => setForm({ ...form, swarm_single_agent_mode: event.target.checked })}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                <span className={labelClass}>{"Single-agent mode (disable concurrent swarm runs)"}</span>
+              </span>
+              <span className={hintClass}>{"Forces multi-agent swarm runs to execute one agent at a time. Recommended for local models that can't handle concurrent requests."}</span>
             </label>
 
             <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

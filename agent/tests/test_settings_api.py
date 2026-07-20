@@ -55,6 +55,7 @@ def test_get_llm_settings_is_side_effect_free_and_hides_placeholders(
     assert not Path(body["env_path"]).is_absolute()
     assert body["env_path"].endswith(".env")
     assert body["reasoning_effort"] == "max"
+    assert body["swarm_single_agent_mode"] is False
     assert not (tmp_path / ".env").exists()
 
 
@@ -114,6 +115,33 @@ def test_update_llm_settings_persists_project_env(
     assert "OPENROUTER_API_KEY=or-secret-value" in env_text
     assert "LANGCHAIN_REASONING_EFFORT=max" in env_text
     assert "sk-or-v1-your-key-here" not in env_text
+
+
+def test_update_llm_settings_persists_swarm_single_agent_mode(
+    client: TestClient, tmp_path: Path,
+) -> None:
+    response = client.put(
+        "/settings/llm",
+        json={
+            "provider": "openrouter",
+            "model_name": "deepseek/deepseek-v4-pro",
+            "base_url": "https://openrouter.ai/api/v1",
+            "temperature": 0.1,
+            "timeout_seconds": 45,
+            "max_retries": 1,
+            "reasoning_effort": "",
+            "swarm_single_agent_mode": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["swarm_single_agent_mode"] is True
+
+    env_text = (tmp_path / ".env").read_text(encoding="utf-8")
+    assert "SWARM_SINGLE_AGENT_MODE=true" in env_text
+
+    follow_up = client.get("/settings/llm")
+    assert follow_up.json()["swarm_single_agent_mode"] is True
 
 
 def test_update_deepseek_settings_uses_exact_reported_payload(

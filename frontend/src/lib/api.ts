@@ -283,6 +283,7 @@ export interface LLMSettings {
   max_retries: number;
   reasoning_effort: string;
   sse_timeout_seconds: number;
+  swarm_single_agent_mode: boolean;
   env_path: string;
   providers: LLMProviderOption[];
 }
@@ -297,6 +298,7 @@ export interface UpdateLLMSettingsRequest {
   timeout_seconds: number;
   max_retries: number;
   reasoning_effort?: string;
+  swarm_single_agent_mode?: boolean;
 }
 
 export interface DataSourceSettings {

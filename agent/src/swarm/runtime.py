@@ -55,7 +55,10 @@ class SwarmRuntime:
 
     Attributes:
         _store: SwarmStore persistence layer.
-        _max_workers: Maximum concurrent workers in ThreadPoolExecutor.
+        _max_workers: Maximum concurrent workers in ThreadPoolExecutor. Forced
+            to 1 when ``SWARM_SINGLE_AGENT_MODE`` is enabled, regardless of
+            the ``max_workers`` argument, so local-model users can prevent
+            concurrent agent runs within a layer.
     """
 
     def __init__(
@@ -68,7 +71,8 @@ class SwarmRuntime:
 
         Args:
             store: SwarmStore instance for run persistence.
-            max_workers: Maximum concurrent worker threads.
+            max_workers: Maximum concurrent worker threads. Overridden to 1
+                when ``SWARM_SINGLE_AGENT_MODE`` is set.
             agent_config: Optional resolved agent config carrying remote MCP
                 server definitions. Boot-time / operator-trusted; never derived
                 from a swarm caller. Forwarded to every worker on every run so
@@ -77,6 +81,8 @@ class SwarmRuntime:
                 local-tool-only behavior byte-for-byte.
         """
         self._store = store
+        if get_env_config().swarm.swarm_single_agent_mode:
+            max_workers = 1
         self._max_workers = max_workers
         self._agent_config = agent_config
         self._cancel_events: dict[str, threading.Event] = {}
