@@ -7,7 +7,7 @@ import ja from "./locales/ja.json";
 import ko from "./locales/ko.json";
 import ar from "./locales/ar.json";
 
-// Language registry — keep in sync with the Layout switcher and README_xx.md.
+// Language registry — keep in sync with the Layout switcher.
 // `dir` flags whether the language is right-to-left so the app can mirror the
 // layout (sidebar on the right, etc.) when needed.
 export const SUPPORTED_LANGUAGES = [
