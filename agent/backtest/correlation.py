@@ -13,6 +13,8 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 
+from backtest.markets import classify
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,10 +23,11 @@ def infer_market(code: str) -> str:
 
     Resolution order:
 
-    1. Crypto pair spellings (``BTC-USDT``, ``ETH/USD`` …).
-    2. Explicit exchange suffix — always authoritative (``.HK``, ``.SH``/
-       ``.SZ``/``.BJ``, ``.US``). Bare HK and A-share codes are both purely
-       numeric, so the suffix is the only reliable disambiguator.
+    1. Registry patterns (``backtest.markets.classify``) — explicit exchange
+       suffixes such as ``.HK``, ``.SH``/``.SZ``/``.BJ``, ``.US``, ``.NS``/
+       ``.BO``, always authoritative.
+    2. Crypto pair spellings (``BTC-USDT``, ``ETH/USD`` …) not covered by
+       the registry.
     3. Bare numeric codes by digit length: A-share codes are exactly 6 digits
        (600000, 000001, 300750, 688981, 830799); HK codes are at most 5
        (700, 0700, 9988, 3690). Prefix alone cannot tell them apart — both
@@ -32,6 +35,11 @@ def infer_market(code: str) -> str:
     4. Anything else (alphabetic tickers) is a US equity.
     """
     code_upper = code.strip().upper()
+
+    market = classify(code_upper)
+    if market is not None:
+        return market
+
     crypto_suffixes = ("USDT", "BTC", "ETH", "BNB", "SOL", "ADA", "DOGE")
     if any(code_upper.endswith(s) for s in crypto_suffixes) or "/" in code:
         return "crypto"

@@ -12,19 +12,19 @@ from typing import Any, Optional
 import pandas as pd
 
 from backtest.loaders.yfinance_loader import DataLoader as YfinanceLoader
+from backtest.markets import MARKET_REGISTRY, classify
 
 
 # -------------------------------------------------------------------
 # Benchmark map: market type → default ticker
 # -------------------------------------------------------------------
+#
+# Derived from backtest.markets.MARKET_REGISTRY (single source of truth).
+# This also closes the previous gap where india_equity had no benchmark
+# entry and silently fell back to us_equity/SPY.
 
 MARKET_BENCHMARKS: dict[str, Optional[str]] = {
-    "us_equity":  "SPY",
-    "hk_equity":  "HK.03100",   # Hang Seng China Enterprises ETF
-    "a_share":    "000300.SH",  # CSI 300 (China A-share core index)
-    "crypto":     "BTC-USDT",
-    "futures":    "ES.CME",      # E-mini S&P 500 futures
-    "forex":      None,         # no universal benchmark
+    key: spec.benchmark for key, spec in MARKET_REGISTRY.items()
 }
 
 
@@ -129,6 +129,12 @@ def _infer_market(codes: list[str], source: str) -> str:
 
     first = codes[0].upper()
 
+    market = classify(first)
+    if market is not None:
+        return market
+
+    # No registry pattern matched (bare/ambiguous code) — fall back to the
+    # existing source-aware heuristic.
     if source in ("okx", "ccxt") or "-" in first or "/" in first:
         return "crypto"
     if first.endswith(".US"):

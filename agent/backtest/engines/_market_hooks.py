@@ -17,32 +17,20 @@ from typing import Dict, List
 
 import pandas as pd
 
+from backtest.markets import MARKET_REGISTRY, classify
 from backtest.models import Position
 
 
 # ── Symbol -> market classification (shared by runner.py + composite.py) ──
-
+#
+# Patterns now live in ``backtest.markets.MARKET_REGISTRY`` (the single
+# source of truth). ``_MARKET_PATTERNS`` is kept here, derived from the
+# registry, for back-compat with anything importing it directly from this
+# module.
 _MARKET_PATTERNS = [
-    (re.compile(r"^\d{6}\.(SZ|SH|BJ)$", re.I), "a_share"),
-    (re.compile(r"^(51|15|56)\d{4}\.(SZ|SH)$", re.I), "a_share"),
-    (re.compile(r"^[A-Z]+\.US$", re.I), "us_equity"),
-    (re.compile(r"^\d{3,5}\.HK$", re.I), "hk_equity"),
-    # India equities: NSE (RELIANCE.NS) / BSE (500325.BO); tickers may carry
-    # '&' and '-' (e.g. M&M.NS, BAJAJ-AUTO.NS).
-    (re.compile(r"^[A-Z0-9&.\-]+\.(NS|BO)$", re.I), "india_equity"),
-    (re.compile(r"^[A-Z]+-USDT$", re.I), "crypto"),
-    (re.compile(r"^[A-Z]+/USDT$", re.I), "crypto"),
-    # China futures: product+delivery.exchange (e.g. IF2406.CFFEX, rb2410.SHFE)
-    (re.compile(r"^[A-Za-z]{1,2}\d{3,4}\.(ZCE|DCE|SHFE|INE|CFFEX|GFEX)$", re.I), "futures"),
-    # Global futures: product+month-code (e.g. ESZ4, CLF25, GCM2025)
-    (re.compile(r"^[A-Z]{2,4}[FGHJKMNQUVXZ]\d{1,2}$", re.I), "futures"),
-    # Global futures: product+YYMM (e.g. CL2412, ES2503)
-    (re.compile(r"^[A-Z]{2,4}\d{4}$", re.I), "futures"),
-    # Global futures: bare product code with exchange (e.g. ES.CME)
-    (re.compile(r"^[A-Z]{2,4}\.(CME|CBOT|NYMEX|COMEX|ICE|EUREX)$", re.I), "futures"),
-    # Forex pairs: XXX/YYY or XXXXXX.FX
-    (re.compile(r"^[A-Z]{3}/[A-Z]{3}$"), "forex"),
-    (re.compile(r"^[A-Z]{6}\.FX$"), "forex"),
+    (pattern, key)
+    for key, spec in MARKET_REGISTRY.items()
+    for pattern in spec.patterns
 ]
 
 _CHINA_EXCHANGES = {"CFFEX", "SHFE", "DCE", "ZCE", "INE", "GFEX"}
@@ -75,10 +63,7 @@ def _detect_market(code: str) -> str:
         Market type (a_share/us_equity/hk_equity/crypto/futures/forex);
         unknown defaults to ``a_share``.
     """
-    for pattern, market in _MARKET_PATTERNS:
-        if pattern.match(code):
-            return market
-    return "a_share"
+    return classify(code) or "a_share"
 
 
 def _is_china_futures(code: str) -> bool:
