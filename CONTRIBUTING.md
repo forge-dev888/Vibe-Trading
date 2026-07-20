@@ -8,7 +8,7 @@ contributions, and the quickstart for adding a new alpha.
 
 For general project setup (`pip install -e ".[dev]"`, dev servers,
 `pytest --ignore=agent/tests/e2e_backtest`), see the README. For bug reports
-and feature requests, use the GitHub issue templates.
+and feature requests, open a GitHub issue.
 
 For AI-assisted or automation-assisted contributions, also see
 [`AGENT_CONTRIBUTOR_GUIDE.md`](AGENT_CONTRIBUTOR_GUIDE.md). It summarizes safe

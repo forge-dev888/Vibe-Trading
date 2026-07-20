@@ -13,18 +13,14 @@
 # Gates:
 #   (a) No `yaml.load(` calls that bypass `safe_load` (RCE risk).
 #   (b) No literal "WorldQuant" anywhere (trademark; spec.md §License).
-#   (c) No per-stock-code data leaking into the wiki/alpha-library tree
-#       (spec.md §"Vendor 数据 ToS").
-#   (d) No deprecated `datetime.utcnow(` usage or bare `datetime.now()` calls
+#   (c) No deprecated `datetime.utcnow(` usage or bare `datetime.now()` calls
 #       in Python sources; `datetime.now(timezone.utc)` is allowed.
-#   (e) No raw `os.getenv` / `os.environ.get` / `os.environ["KEY"]` reads
+#   (d) No raw `os.getenv` / `os.environ.get` / `os.environ["KEY"]` reads
 #       outside the centralized config layer (`agent/src/config/`).
 #       AST-based; uses `tools/ci_env_var_gate.py`.
 #
 # Exclusions: .git, node_modules, __pycache__, .venv, dist, build, this
-# script itself. The HTML scan in (c) is scoped to wiki/alpha-library/**
-# because hero banners in wiki/home/*.html legitimately mention a single
-# example ticker — the gate exists to catch *bulk* data dumps, not prose.
+# script itself.
 
 set -u
 set -o pipefail
@@ -60,7 +56,7 @@ fi
 # trademark policy itself (e.g. "the string 'WorldQuant' must not appear in
 # user-facing artifacts"). docs/ is not shipped to PyPI / public consumers
 # (memory: feedback_no_push_docs). The gate's real target is source code,
-# READMEs, HTML/JSON manifests, and the wiki.
+# READMEs, and HTML/JSON manifests.
 echo "[gate b] no 'WorldQuant' trademark string in shipped artifacts ..."
 B_HITS=$(grep -rni --include='*.py' --include='*.md' --include='*.html' --include='*.json' \
     "${EXCLUDE_DIRS[@]}" --exclude-dir=docs 'worldquant' . 2>/dev/null \
@@ -75,35 +71,7 @@ else
 fi
 
 # -------------------------------------------------------------- gate (c)
-echo "[gate c] no per-stock-code data in wiki/alpha-library ..."
-if [ -d "wiki" ]; then
-    # CN A-share style: 6 digits + .SH/.SZ/.BJ — scan json/csv anywhere in wiki/,
-    # html only inside wiki/alpha-library (marketing pages elsewhere may show
-    # one example ticker in prose).
-    C_HITS_JSON_CSV=$(grep -rEn --include='*.json' --include='*.csv' \
-        "${EXCLUDE_DIRS[@]}" '[0-9]{6}\.(SH|SZ|BJ)|[A-Z]{1,5}\.US' wiki/ 2>/dev/null || true)
-    C_HITS_HTML=""
-    if [ -d "wiki/alpha-library" ]; then
-        C_HITS_HTML=$(grep -rEn --include='*.html' \
-            "${EXCLUDE_DIRS[@]}" '[0-9]{6}\.(SH|SZ|BJ)|[A-Z]{1,5}\.US' wiki/alpha-library/ 2>/dev/null || true)
-    fi
-    C_HITS="$C_HITS_JSON_CSV"
-    if [ -n "$C_HITS_HTML" ]; then
-        C_HITS="${C_HITS}${C_HITS:+$'\n'}${C_HITS_HTML}"
-    fi
-    if [ -n "$C_HITS" ]; then
-        echo "${RED}FAIL${NC}: per-stock-code data found in wiki/ (spec.md §Vendor 数据 ToS):"
-        echo "$C_HITS"
-        FAILED=1
-    else
-        echo "${GREEN}ok${NC}"
-    fi
-else
-    echo "${YELLOW}skip${NC}: no wiki/ directory"
-fi
-
-# -------------------------------------------------------------- gate (d)
-echo "[gate d] no deprecated datetime.utcnow() / bare datetime.now() calls ..."
+echo "[gate c] no deprecated datetime.utcnow() / bare datetime.now() calls ..."
 TARGET_FILES=(
   agent/api_server.py
   agent/src/agent/context.py
@@ -128,8 +96,8 @@ else
     echo "${GREEN}ok${NC}"
 fi
 
-# -------------------------------------------------------------- gate (e)
-echo "[gate e] no raw os.getenv / os.environ reads outside config layer ..."
+# -------------------------------------------------------------- gate (d)
+echo "[gate d] no raw os.getenv / os.environ reads outside config layer ..."
 E_OUTPUT=$(python tools/ci_env_var_gate.py 2>&1)
 E_RC=$?
 if [ "$E_RC" -ne 0 ]; then

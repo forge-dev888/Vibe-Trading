@@ -1,15 +1,13 @@
 # Agent Contributor Guide
 
 This guide is for AI-assisted and automation-assisted contributors working on
-Vibe-Trading. It does not replace `CONTRIBUTING.md`, `SECURITY.md`, or the pull
-request template. It makes the repo's agent-facing safety and verification
-expectations explicit.
+Vibe-Trading. It does not replace `CONTRIBUTING.md` or `SECURITY.md`. It makes
+the repo's agent-facing safety and verification expectations explicit.
 
 ## Repository Shape
 
 - Backend and package code live under `agent/`.
 - Frontend code lives under `frontend/`.
-- Public wiki content lives under `wiki/` and has separate GitHub Actions checks.
 - MCP entry point: `vibe-trading-mcp` / `agent/mcp_server.py`.
 - CLI entry point: `vibe-trading` / `agent/cli/`.
 - Broker connector, mandate, order gate, halt, and audit-ledger logic are safety
@@ -47,7 +45,7 @@ Get explicit maintainer or operator approval before running commands that:
 - write real credentials into `agent/.env`, `~/.vibe-trading/`, token caches, or
   external services,
 - start externally reachable API, MCP, SSE, webhook, or dashboard servers,
-- deploy the wiki, publish packages, trigger releases, or change CI secrets,
+- publish packages, trigger releases, or change CI secrets,
 - rewrite history, force-push shared branches, delete backups, or remove
   persistent run or memory data.
 
@@ -90,8 +88,6 @@ cd frontend && npm ci && npm run build
 - Update `CONTRIBUTING.md` when contributor workflow, DCO expectations, style
   rules, or test expectations change.
 - Update `SECURITY.md` only for vulnerability reporting policy changes.
-- Keep wiki edits under `wiki/`; avoid mixing generated assets or local drafts
-  into public docs.
 - If a change affects live/order behavior, document the safety boundary and the
   rollback or halt path.
 

@@ -1,8 +1,4 @@
 <p align="center">
-  <b>English</b> | <a href="README_zh.md">中文</a> | <a href="README_ja.md">日本語</a> | <a href="README_ko.md">한국어</a> | <a href="README_ar.md">العربية</a>
-</p>
-
-<p align="center">
   <img src="assets/icon.png" width="120" alt="Vibe-Trading Logo"/>
 </p>
 
@@ -29,8 +25,6 @@
 </p>
 
 <p align="center">
-  <a href="https://vibetrading.wiki/">Website</a> &nbsp;&middot;&nbsp;
-  <a href="https://vibetrading.wiki/docs/">Docs</a> &nbsp;&middot;&nbsp;
   <a href="#-news">News</a> &nbsp;&middot;&nbsp;
   <a href="#-key-features">Features</a> &nbsp;&middot;&nbsp;
   <a href="#-shadow-account">Shadow Account</a> &nbsp;&middot;&nbsp;
