@@ -43,34 +43,36 @@
   }
 
   .dark {
-    /* Dark mode: 4-level surface system */
-    --background: 220 20% 5%;       /* bg-base */
-    --foreground: 220 10% 92%;
-    --card: 220 20% 8%;             /* surface-1 */
-    --card-foreground: 220 10% 92%;
+    /* Dark mode: navy 4-level surface system. Blue-tinted (not neutral gray or
+       pure black — OLED "smear" on true black plus a flat, generic feel) so
+       the whole app reads as one deliberate "trading terminal" surface. */
+    --background: 222 47% 6%;       /* bg-base: deep navy */
+    --foreground: 210 30% 94%;
+    --card: 222 40% 9%;             /* surface-1 */
+    --card-foreground: 210 30% 94%;
 
-    --popover: 220 20% 9%;          /* surface-1.5 (slightly lighter than card) */
-    --popover-foreground: 220 10% 92%;
+    --popover: 222 38% 12%;         /* surface-1.5 (slightly lighter than card) */
+    --popover-foreground: 210 30% 94%;
 
-    --primary: 27 90% 52%;
+    --primary: 30 92% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --muted: 220 20% 13%;           /* surface-2 */
-    --muted-foreground: 220 10% 55%;
-    --destructive: 0 62% 50%;
+    --muted: 222 34% 14%;           /* surface-2 */
+    --muted-foreground: 215 18% 63%;
+    --destructive: 0 68% 56%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 20% 18%;          /* surface-3 */
+    --border: 222 28% 19%;          /* surface-3 */
 
     /* Semantic colors */
-    --success: 142 71% 45%;
-    --danger: 0 62% 50%;
-    --warning: 38 92% 50%;
-    --info: 217 91% 60%;
+    --success: 152 60% 45%;
+    --danger: 0 68% 56%;
+    --warning: 38 92% 55%;
+    --info: 217 91% 63%;
 
     /* Chart tokens */
-    --chart-grid: 220 20% 12%;
-    --chart-text: 220 10% 42%;
-    --chart-axis: 220 20% 22%;
+    --chart-grid: 222 30% 15%;
+    --chart-text: 215 15% 56%;
+    --chart-axis: 222 25% 25%;
     --chart-compare-a: #60a5fa;
     --chart-compare-b: #fbbf24;
   }

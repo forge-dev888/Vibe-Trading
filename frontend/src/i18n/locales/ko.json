@@ -21,7 +21,9 @@
     "dark": "다크",
     "language": "언어",
     "collapse": "접기",
-    "expand": "펼치기"
+    "expand": "펼치기",
+    "openMenu": "메뉴 열기",
+    "closeMenu": "메뉴 닫기"
   },
   "runtime": {
     "monitorBadge": "런타임 모니터",

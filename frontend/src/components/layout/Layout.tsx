@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useSearchParams } from "react-router-dom";
-import { Activity, BarChart3, Bot, Check, ChevronDown, FileText, Languages, Moon, Sun, Plus, Trash2, Pencil, MessageSquare, ChevronsLeft, ChevronsRight, Settings, Layers, Loader2 } from "lucide-react";
+import { Activity, BarChart3, Bot, Check, ChevronDown, FileText, Languages, Moon, Sun, Plus, Trash2, Pencil, MessageSquare, ChevronsLeft, ChevronsRight, Settings, Layers, Loader2, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { api, type SessionItem } from "@/lib/api";
@@ -32,6 +32,11 @@ export function Layout() {
   const sseStatus = useAgentStore(s => s.sseStatus);
   const sseRetryAttempt = useAgentStore(s => s.sseRetryAttempt);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("qa-sidebar") === "collapsed");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Mobile drawer always shows the full (uncollapsed) sidebar content —
+  // `collapsed` is a desktop-only preference and shouldn't shrink the
+  // drawer down to icon-only on a touch screen.
+  const effectiveCollapsed = collapsed && !mobileNavOpen;
 
   const activeSessionId = searchParams.get("session");
   const streamingSessionId = useAgentStore(s => s.streamingSessionId);
@@ -39,6 +44,21 @@ export function Layout() {
   useEffect(() => {
     localStorage.setItem("qa-sidebar", collapsed ? "collapsed" : "expanded");
   }, [collapsed]);
+
+  // Close the mobile drawer on Escape and lock background scroll while open.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileNavOpen(false); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [mobileNavOpen]);
+
+  // Close the drawer whenever the route changes (link tap navigated away).
+  useEffect(() => { setMobileNavOpen(false); }, [pathname]);
 
   const loadSessions = () => {
     api.listSessions()
@@ -75,21 +95,65 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-background rtl:flex-row-reverse">
-      {/* Sidebar */}
+      {/* Mobile top bar — hidden at md+ where the static sidebar takes over */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between h-14 px-3 border-b bg-card pt-[env(safe-area-inset-top)]">
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          aria-label={t('layout.openMenu')}
+          className="p-2 -ms-2 text-muted-foreground hover:text-foreground rounded-md active:bg-muted"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <Link to="/" className="flex items-center gap-2 font-bold text-sm tracking-tight">
+          <BarChart3 className="h-5 w-5 text-primary shrink-0" />
+          Vibe-Trading
+        </Link>
+        <button
+          onClick={toggle}
+          aria-label={dark ? t('layout.light') : t('layout.dark')}
+          className="p-2 -me-2 text-muted-foreground hover:text-foreground rounded-md active:bg-muted"
+        >
+          {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </button>
+      </div>
+
+      {/* Scrim behind the mobile drawer */}
+      {mobileNavOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/50"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — a fixed slide-over drawer on mobile, a static column at md+ */}
       <aside className={cn(
-        "border-e bg-card flex flex-col shrink-0 transition-all duration-200 overflow-visible",
-        collapsed ? "w-12" : "w-64"
+        "border-e bg-card flex flex-col shrink-0 overflow-visible",
+        "fixed inset-y-0 start-0 z-50 w-72 max-w-[85vw] transition-transform duration-200 ease-out",
+        mobileNavOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full",
+        "md:static md:z-auto md:translate-x-0 md:transition-[width] md:duration-200",
+        collapsed ? "md:w-12" : "md:w-64"
       )}>
         {/* Brand */}
-        <div className={cn("border-b", collapsed ? "p-2 flex justify-center" : "p-4")}>
-          <Link to="/" className={cn("flex items-center font-bold text-base tracking-tight", collapsed ? "justify-center" : "gap-2")}>
+        <div className={cn(
+          "border-b pt-[env(safe-area-inset-top)]",
+          effectiveCollapsed ? "p-2 flex justify-center" : "p-4 flex items-center justify-between"
+        )}>
+          <Link to="/" className={cn("flex items-center font-bold text-base tracking-tight", effectiveCollapsed ? "justify-center" : "gap-2")}>
             <BarChart3 className="h-5 w-5 text-primary shrink-0" />
-            {!collapsed && "Vibe-Trading"}
+            {!effectiveCollapsed && "Vibe-Trading"}
           </Link>
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            aria-label={t('layout.closeMenu')}
+            className="md:hidden p-1.5 text-muted-foreground hover:text-foreground rounded-md active:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Nav */}
-        <nav className={cn("space-y-0.5", collapsed ? "p-1" : "p-2")}>
+        <nav className={cn("space-y-0.5", effectiveCollapsed ? "p-1" : "p-2")}>
           {NAV.map(({ to, icon: Icon, label }) => {
             const text = label;
             return (
@@ -98,22 +162,22 @@ export function Layout() {
                 to={to}
                 className={cn(
                   "flex items-center rounded-md text-sm transition-colors",
-                  collapsed ? "justify-center p-2" : "gap-3 px-3 py-2",
+                  effectiveCollapsed ? "justify-center p-2" : "gap-3 px-3 py-2.5 md:py-2",
                   (to === "/" ? pathname === "/" : pathname.startsWith(to))
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-                title={collapsed ? text : undefined}
+                title={effectiveCollapsed ? text : undefined}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {!collapsed && text}
+                {!effectiveCollapsed && text}
               </Link>
             );
           })}
         </nav>
 
         {/* Sessions — hidden when collapsed */}
-        {!collapsed && (
+        {!effectiveCollapsed && (
           <div className="flex-1 overflow-auto border-t mt-2 flex flex-col">
             <div className="flex items-center justify-between px-4 py-2">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -209,11 +273,11 @@ export function Layout() {
         )}
 
         {/* Spacer when collapsed */}
-        {collapsed && <div className="flex-1" />}
+        {effectiveCollapsed && <div className="flex-1" />}
 
         {/* Footer */}
-        <div className={cn("border-t", collapsed ? "p-1 flex flex-col items-center gap-1" : "p-3 space-y-2")}>
-          {collapsed ? (
+        <div className={cn("border-t pb-[env(safe-area-inset-bottom)]", effectiveCollapsed ? "p-1 flex flex-col items-center gap-1" : "p-3 space-y-2")}>
+          {effectiveCollapsed ? (
             <>
               <button onClick={toggle} className="p-1.5 text-muted-foreground hover:text-foreground rounded transition-colors" title={dark ? t('layout.light') : t('layout.dark')}>
                 {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
@@ -232,7 +296,7 @@ export function Layout() {
                   {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
                   {dark ? t('layout.light') : t('layout.dark')}
                 </button>
-                <div className="flex items-center gap-1">
+                <div className="hidden md:flex items-center gap-1">
                   <button
                     onClick={() => setCollapsed(true)}
                     className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
@@ -252,9 +316,9 @@ export function Layout() {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-0">
         <ConnectionBanner status={sseStatus} retryAttempt={sseRetryAttempt} />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-[env(safe-area-inset-bottom)] md:pb-0">
           <Outlet />
         </main>
       </div>

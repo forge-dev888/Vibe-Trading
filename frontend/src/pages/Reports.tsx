@@ -82,7 +82,7 @@ export function Reports() {
   }, [runs, query, statusFilter, startDate, endDate, sortMode]);
 
   return (
-    <div className="min-h-screen p-6 lg:p-8">
+    <div className="min-h-full p-4 sm:p-6 lg:p-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <section className="flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
